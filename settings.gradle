@@ -45,6 +45,9 @@ include 'internalIntegTesting'
 include 'performance'
 include 'javascript'
 include 'buildComparison'
+include 'reporting'
+include 'diagnostics'
+include 'publish'
 
 rootProject.name = 'gradle'
 rootProject.children.each {project ->

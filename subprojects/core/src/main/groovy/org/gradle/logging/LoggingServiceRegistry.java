@@ -16,7 +16,7 @@
 
 package org.gradle.logging;
 
-import org.gradle.api.Action;
+import org.gradle.api.internal.Actions;
 import org.gradle.cli.CommandLineConverter;
 import org.gradle.internal.Factory;
 import org.gradle.internal.TimeProvider;
@@ -125,10 +125,7 @@ public abstract class LoggingServiceRegistry extends DefaultServiceRegistry {
     protected abstract Factory<LoggingManagerInternal> createLoggingManagerFactory();
 
     protected OutputEventRenderer createOutputEventRenderer() {
-        OutputEventRenderer renderer = new OutputEventRenderer(new Action<OutputEventRenderer>() {
-            public void execute(OutputEventRenderer outputEventRenderer) {
-            }
-        });
+        OutputEventRenderer renderer = new OutputEventRenderer(Actions.<OutputEventRenderer>doNothing());
         renderer.addStandardOutputAndError();
         return renderer;
     }

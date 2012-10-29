@@ -16,23 +16,31 @@
 package org.gradle.api.tasks.scala;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
 import org.gradle.api.tasks.compile.AbstractOptions;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.compile.BaseForkOptions;
 
-import java.io.File;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
 
 /**
  * Options for Scala compilation.
  */
 public class ScalaCompileOptions extends AbstractOptions {
     private static final long serialVersionUID = 0;
+
+    private static final ImmutableMap<String, String> FIELD_NAMES_TO_ANT_PROPERTIES = new ImmutableMap.Builder<String, String>()
+            .put("loggingLevel", "logging")
+            .put("loggingPhases", "logphase")
+            .put("targetCompatibility", "target")
+            .put("optimize", "optimise")
+            .put("daemonServer", "server")
+            .put("listFiles", "scalacdebugging")
+            .put("debugLevel", "debuginfo")
+            .put("additionalParameters", "addparams")
+            .build();
 
     private boolean useCompileDaemon;
 
@@ -52,7 +60,7 @@ public class ScalaCompileOptions extends AbstractOptions {
 
     private String force = "never";
 
-    private String targetCompatibility = "1.5";
+    private String targetCompatibility;
 
     private List<String> additionalParameters;
 
@@ -68,7 +76,7 @@ public class ScalaCompileOptions extends AbstractOptions {
 
     private boolean useAnt = true;
 
-    private File compilerCacheFile;
+    private IncrementalCompileOptions incrementalOptions = new IncrementalCompileOptions();
 
     /**
      * Whether to use the fsc compile daemon.
@@ -81,7 +89,7 @@ public class ScalaCompileOptions extends AbstractOptions {
         this.useCompileDaemon = useCompileDaemon;
     }
 
-    // NOTE: Does not work for scalac 2.7.1 due to a bug in the ant task
+    // NOTE: Does not work for scalac 2.7.1 due to a bug in the Ant task
     /**
      * Server (host:port) on which the compile daemon is running.
      * The host must share disk access with the client process.
@@ -182,14 +190,23 @@ public class ScalaCompileOptions extends AbstractOptions {
     }
 
     /**
-     * Specifies which backend to use.
-     * Legal values: 1.4, 1.5
+     * Returns which backend is to be used.
+     *
+     * @deprecated use {@link ScalaCompile#getTargetCompatibility} instead
      */
     @Input
+    @Optional
+    @Deprecated
     public String getTargetCompatibility() {
         return targetCompatibility;
     }
 
+    /**
+     * Sets which backend is to be used.
+     *
+     * @deprecated use {@link ScalaCompile#setTargetCompatibility} instead
+     */
+    @Deprecated
     public void setTargetCompatibility(String targetCompatibility) {
         this.targetCompatibility = targetCompatibility;
     }
@@ -279,73 +296,50 @@ public class ScalaCompileOptions extends AbstractOptions {
         this.useAnt = useAnt;
     }
 
-    /**
-     * File location to store results of dependency analysis. Only used if {@code useAnt} is {@code true}.
-     */
-    public File getCompilerCacheFile() {
-        return compilerCacheFile;
+    public IncrementalCompileOptions getIncrementalOptions() {
+        return incrementalOptions;
     }
 
-    public void setCompilerCacheFile(File compilerCacheFile) {
-        this.compilerCacheFile = compilerCacheFile;
+    public void setIncrementalOptions(IncrementalCompileOptions incrementalOptions) {
+        this.incrementalOptions = incrementalOptions;
     }
 
-    protected Map<String, String> fieldName2AntMap() {
-        return new ImmutableMap.Builder<String, String>()
-                .put("failOnError", "failonerror")
-                .put("loggingLevel", "logging")
-                .put("loggingPhases", "logPhase")
-                .put("targetCompatibility", "target")
-                .put("optimize", "optimise")
-                .put("daemonServer", "server")
-                .put("listFiles", "scalacDebugging")
-                .put("debugLevel", "debugInfo")
-                .put("additionalParameters", "addParams")
-                .build();
+    protected boolean excludeFromAntProperties(String fieldName) {
+        return fieldName.equals("useCompileDaemon")
+                || fieldName.equals("forkOptions")
+                || fieldName.equals("useAnt")
+                || fieldName.equals("incrementalOptions")
+                || fieldName.equals("targetCompatibility") // handled directly by AntScalaCompiler
+                || fieldName.equals("optimize") && !optimize;
     }
 
-    protected Map<String, ? extends Callable<Object>> fieldValue2AntMap() {
-        return new ImmutableMap.Builder<String, Callable<Object>>()
-                .put("deprecation", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return toOnOffString(isDeprecation());
-                    }
-                })
-                .put("unchecked", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return toOnOffString(isUnchecked());
-                    }
-                })
-                .put("optimize", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return toOnOffString(isOptimize());
-                    }
-                })
-                .put("targetCompatibility", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return String.format("jvm-%s", getTargetCompatibility());
-                    }
-                })
-                .put("loggingPhases", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return getLoggingPhases().isEmpty() ? " " : Joiner.on(',').join(getLoggingPhases());
-                    }
-                })
-                .put("additionalParameters", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return getAdditionalParameters().isEmpty() ? " " : Joiner.on(' ').join(getAdditionalParameters());
-                    }
-                })
-                .build();
-    }
-
-    protected List<String> excludedFieldsFromOptionMap() {
-        ImmutableList.Builder<String> builder = new ImmutableList.Builder<String>()
-                .add("useCompileDaemon", "forkOptions", "useAnt", "compilerCacheFile");
-        if (!optimize) {
-            builder.add("optimize");
+    protected String getAntPropertyName(String fieldName) {
+        if (FIELD_NAMES_TO_ANT_PROPERTIES.containsKey(fieldName)) {
+            return FIELD_NAMES_TO_ANT_PROPERTIES.get(fieldName);
         }
-        return builder.build();
+        return fieldName;
+    }
+
+    protected Object getAntPropertyValue(String fieldName, Object value) {
+        if (fieldName.equals("deprecation")) {
+            return toOnOffString(isDeprecation());
+        }
+        if (fieldName.equals("unchecked")) {
+            return toOnOffString(isUnchecked());
+        }
+        if (fieldName.equals("optimize")) {
+            return toOnOffString(isOptimize());
+        }
+        if (fieldName.equals("targetCompatibility")) {
+            return String.format("jvm-%s", getTargetCompatibility());
+        }
+        if (fieldName.equals("loggingPhases")) {
+            return getLoggingPhases().isEmpty() ? " " : Joiner.on(',').join(getLoggingPhases());
+        }
+        if (fieldName.equals("additionalParameters")) {
+            return getAdditionalParameters().isEmpty() ? " " : Joiner.on(' ').join(getAdditionalParameters());
+        }
+        return value;
     }
 
     private String toOnOffString(boolean flag) {

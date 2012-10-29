@@ -22,6 +22,7 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.internal.AbstractTask;
+import org.gradle.api.internal.Actions;
 import org.gradle.api.internal.AsmBackedClassGenerator;
 import org.gradle.api.internal.DependencyInjectingInstantiator;
 import org.gradle.api.internal.project.AbstractProject;
@@ -42,15 +43,12 @@ import org.jmock.lib.legacy.ClassImposteriser;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-
 import spock.lang.Issue;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.gradle.util.Matchers.dependsOn;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.sameInstance;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 /**
@@ -145,8 +143,8 @@ public abstract class AbstractTaskTest {
 
     @Test
     public void testDeleteAllActions() {
-        Action<Task> action1 = createTaskAction();
-        Action<Task> action2 = createTaskAction();
+        Action<Task> action1 = Actions.doNothing();
+        Action<Task> action2 = Actions.doNothing();
         getTask().doLast(action1);
         getTask().doLast(action2);
         assertSame(getTask(), getTask().deleteAllActions());
@@ -291,13 +289,6 @@ public abstract class AbstractTaskTest {
         assertTrue(getTask().dependsOnTaskDidWork());
     }
 
-    public static Action<Task> createTaskAction() {
-        return new Action<Task>() {
-            public void execute(Task task) {
-            }
-        };
-    }
-    
     @Test
     @Issue("http://issues.gradle.org/browse/GRADLE-2022")
     public void testGoodErrorMessageWhenTaskInstantiatedDirectly() {

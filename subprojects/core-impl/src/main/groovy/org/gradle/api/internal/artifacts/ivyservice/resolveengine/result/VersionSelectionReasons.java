@@ -23,6 +23,7 @@ import org.gradle.api.artifacts.result.ModuleVersionSelectionReason;
  */
 public class VersionSelectionReasons {
     public static final ModuleVersionSelectionReason REQUESTED = new DefaultModuleVersionSelectionReason(false, false);
+    public static final ModuleVersionSelectionReason ROOT = new DefaultModuleVersionSelectionReason(false, false);
     public static final ModuleVersionSelectionReason FORCED = new DefaultModuleVersionSelectionReason(true, false);
     public static final ModuleVersionSelectionReason CONFLICT_RESOLUTION = new DefaultModuleVersionSelectionReason(false, true);
 
@@ -43,5 +44,8 @@ public class VersionSelectionReasons {
         public boolean isConflictResolution() {
             return conflictResolution;
         }
+
+        //TODO At some point we want to provide information if version was requested in the graph.
+        //Perhaps a method like isRequested(). Not requested means that some particular version was forced but no dependency have requested this version.
     }
 }

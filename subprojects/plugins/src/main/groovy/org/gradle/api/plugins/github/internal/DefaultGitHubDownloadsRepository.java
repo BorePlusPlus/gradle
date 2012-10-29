@@ -22,9 +22,11 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.artifacts.repositories.PasswordCredentials;
 import org.gradle.api.internal.artifacts.repositories.ArtifactRepositoryInternal;
-import org.gradle.api.internal.artifacts.repositories.MavenResolver;
+import org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.plugins.github.GitHubDownloadsRepository;
+import org.gradle.api.publish.internal.NormalizedPublication;
+import org.gradle.api.publish.internal.Publisher;
 import org.gradle.internal.Factory;
 import org.gradle.util.ConfigureUtil;
 
@@ -96,8 +98,6 @@ public class DefaultGitHubDownloadsRepository implements GitHubDownloadsReposito
         applyCredentialsTo(repository.getCredentials());
 
         ArtifactRepositoryInternal repositoryInternal = toArtifactRepositoryInternal(repository);
-        //TODO we should try to avoid directly depending on core-impl
-        //if we fix this MavenResolver problem we can replace compile dependency on coreImpl with 'testCompile' dependency.
         MavenResolver resolver = toMavenResolver(repositoryInternal.createResolver());
 
         resolver.setPattern(PATTERN);
@@ -120,4 +120,9 @@ public class DefaultGitHubDownloadsRepository implements GitHubDownloadsReposito
         other.setUsername(credentials.getUsername());
         other.setPassword(credentials.getPassword());
     }
+
+    public <P extends NormalizedPublication> Publisher<P> createPublisher(P publication) {
+        return null;
+    }
+
 }

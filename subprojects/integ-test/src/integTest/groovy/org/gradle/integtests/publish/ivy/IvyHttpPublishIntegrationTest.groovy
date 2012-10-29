@@ -17,10 +17,7 @@
 
 package org.gradle.integtests.publish.ivy
 
-import org.gradle.integtests.fixtures.AbstractIntegrationSpec
-import org.gradle.integtests.fixtures.HttpServer
-import org.gradle.integtests.fixtures.IvyModule
-import org.gradle.integtests.fixtures.ProgressLoggingFixture
+import org.gradle.integtests.fixtures.*
 import org.gradle.util.GradleVersion
 import org.gradle.util.Jvm
 import org.gradle.util.TestFile
@@ -49,8 +46,6 @@ credentials {
     def setup() {
         module = ivyRepo.module("org.gradle", "publish", "2")
         module.moduleDir.mkdirs()
-        //for unknown os tests
-        file("gradle.properties") << System.properties.findAll {key, value -> key.startsWith("os.")}.collect {key, value -> "systemProp.${key}=$value"}.join("\n")
         server.expectUserAgent(matchesNameAndVersion("Gradle", GradleVersion.current().getVersion()))
     }
 
@@ -323,12 +318,12 @@ uploadArchives {
         module.ivyFile.assertDoesNotExist()
     }
 
-    private void expectUpload(String path, IvyModule module, TestFile file, int statusCode = HttpStatus.ORDINAL_200_OK) {
+    private void expectUpload(String path, IvyFileModule module, TestFile file, int statusCode = HttpStatus.ORDINAL_200_OK) {
         server.expectPut(path, file, statusCode)
         server.expectPut("${path}.sha1", module.sha1File(file), statusCode)
     }
 
-    private void expectUpload(String path, IvyModule module, TestFile file, String username, String password) {
+    private void expectUpload(String path, IvyFileModule module, TestFile file, String username, String password) {
         server.expectPut(path, username, password, file)
         server.expectPut("${path}.sha1", username, password, module.sha1File(file))
     }

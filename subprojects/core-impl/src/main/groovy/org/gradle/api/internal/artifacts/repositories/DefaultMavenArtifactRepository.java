@@ -21,11 +21,14 @@ import org.apache.ivy.plugins.resolver.DependencyResolver;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.artifacts.repositories.PasswordCredentials;
+import org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransport;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory;
 import org.gradle.api.internal.externalresource.cached.CachedExternalResourceIndex;
 import org.gradle.api.internal.externalresource.local.LocallyAvailableResourceFinder;
 import org.gradle.api.internal.file.FileResolver;
+import org.gradle.api.publish.internal.NormalizedPublication;
+import org.gradle.api.publish.internal.Publisher;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -103,6 +106,10 @@ public class DefaultMavenArtifactRepository extends AbstractAuthenticationSuppor
         } else {
             return transportFactory.createHttpTransport(name, getCredentials());
         }
+    }
+
+    public <P extends NormalizedPublication> Publisher<P> createPublisher(P publication) {
+        return null;
     }
 
 }

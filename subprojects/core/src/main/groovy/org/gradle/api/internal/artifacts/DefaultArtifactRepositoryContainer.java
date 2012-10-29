@@ -22,13 +22,11 @@ import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Namer;
 import org.gradle.api.UnknownDomainObjectException;
-import org.gradle.api.artifacts.repositories.ArtifactRepository;
 import org.gradle.api.artifacts.ArtifactRepositoryContainer;
 import org.gradle.api.artifacts.UnknownRepositoryException;
+import org.gradle.api.artifacts.repositories.ArtifactRepository;
 import org.gradle.api.internal.DefaultNamedDomainObjectList;
 import org.gradle.internal.reflect.Instantiator;
-import org.gradle.api.internal.artifacts.repositories.ArtifactRepositoryInternal;
-import org.gradle.api.internal.artifacts.repositories.FixedResolverArtifactRepository;
 import org.gradle.util.ConfigureUtil;
 import org.gradle.util.DeprecationLogger;
 import org.gradle.util.GUtil;
@@ -42,8 +40,8 @@ import java.util.Map;
  */
 public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObjectList<ArtifactRepository>
         implements ArtifactRepositoryContainer {
-    private final ResolverFactory resolverFactory;
 
+    private final BaseRepositoryFactory baseRepositoryFactory;
     private final Action<ArtifactRepository> addLastAction = new Action<ArtifactRepository>() {
         public void execute(ArtifactRepository repository) {
             DefaultArtifactRepositoryContainer.super.add(repository);
@@ -55,9 +53,9 @@ public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObject
         }
     };
 
-    public DefaultArtifactRepositoryContainer(ResolverFactory resolverFactory, Instantiator instantiator) {
+    public DefaultArtifactRepositoryContainer(BaseRepositoryFactory baseRepositoryFactory, Instantiator instantiator) {
         super(ArtifactRepository.class, instantiator, new RepositoryNamer());
-        this.resolverFactory = resolverFactory;
+        this.baseRepositoryFactory = baseRepositoryFactory;
     }
 
     private static class RepositoryNamer implements Namer<ArtifactRepository> {
@@ -152,10 +150,12 @@ public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObject
     }
 
     private DependencyResolver addCustomDependencyResolver(Object userDescription, Closure configureClosure, Action<ArtifactRepository> orderAction) {
-        ArtifactRepository repository = resolverFactory.createRepository(userDescription);
-        DependencyResolver resolver = toResolver(DependencyResolver.class, repository);
+        ArtifactRepository repository = baseRepositoryFactory.createRepository(userDescription);
+        DependencyResolver resolver = baseRepositoryFactory.toResolver(repository);
         ConfigureUtil.configure(configureClosure, resolver);
-        addRepository(new FixedResolverArtifactRepository(resolver), "repository", orderAction);
+        ArtifactRepository resolverRepository = baseRepositoryFactory.createResolverBackedRepository(resolver);
+        resolverRepository.setName("repository");
+        addRepository(resolverRepository, orderAction);
         return resolver;
     }
 
@@ -167,18 +167,9 @@ public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObject
     public List<DependencyResolver> getResolvers() {
         List<DependencyResolver> returnedResolvers = new ArrayList<DependencyResolver>();
         for (ArtifactRepository repository : this) {
-            returnedResolvers.add(((ArtifactRepositoryInternal) repository).createResolver());
+            returnedResolvers.add(baseRepositoryFactory.toResolver(repository));
         }
         return returnedResolvers;
-    }
-
-    public ResolverFactory getResolverFactory() {
-        return resolverFactory;
-    }
-
-    protected <T extends ArtifactRepository> T addRepository(T repository, Action<? super T> action, String defaultName) {
-        action.execute(repository);
-        return addRepository(repository, defaultName);
     }
 
     public <T extends ArtifactRepository> T addRepository(T repository, Closure closure, String defaultName) {
@@ -208,7 +199,7 @@ public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObject
     protected <T extends ArtifactRepository> T addRepository(T repository, String defaultName, Action<ArtifactRepository> action) {
         String repositoryName = repository.getName();
         if (!GUtil.isTrue(repositoryName)) {
-            repositoryName = findName(defaultName);
+            repositoryName = uniquifyName(defaultName);
             repository.setName(repositoryName);
         }
         assertCanAdd(repositoryName);
@@ -217,20 +208,27 @@ public class DefaultArtifactRepositoryContainer extends DefaultNamedDomainObject
         return repository;
     }
 
-    protected String findName(String defaultName) {
-        if (findByName(defaultName) == null) {
-            return defaultName;
+    protected <T extends ArtifactRepository> T addRepository(T repository) {
+        return addRepository(repository, addLastAction);
+    }
+
+    protected <T extends ArtifactRepository> T addRepository(T repository, Action<? super T> insertion) {
+        repository.setName(uniquifyName(repository.getName()));
+        assertCanAdd(repository.getName());
+        insertion.execute(repository);
+        return repository;
+    }
+
+    private String uniquifyName(String proposedName) {
+        if (findByName(proposedName) == null) {
+            return proposedName;
         }
         for (int index = 2; true; index++) {
-            String candidate = String.format("%s%d", defaultName, index);
+            String candidate = String.format("%s%d", proposedName, index);
             if (findByName(candidate) == null) {
                 return candidate;
             }
         }
     }
 
-    protected <T extends DependencyResolver> T toResolver(Class<T> type, ArtifactRepository repository) {
-        DependencyResolver resolver = ((ArtifactRepositoryInternal) repository).createResolver();
-        return type.cast(resolver);
-    }
 }

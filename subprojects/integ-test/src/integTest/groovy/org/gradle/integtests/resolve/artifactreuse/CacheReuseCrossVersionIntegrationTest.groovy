@@ -17,21 +17,24 @@ package org.gradle.integtests.resolve.artifactreuse
 
 import org.gradle.integtests.fixtures.CrossVersionIntegrationSpec
 import org.gradle.integtests.fixtures.HttpServer
+import org.gradle.integtests.fixtures.MavenFileRepository
+import org.gradle.integtests.fixtures.MavenHttpRepository
 import org.gradle.integtests.fixtures.TargetVersions
 import org.junit.Rule
 
 @TargetVersions('1.0-milestone-6+')
 class CacheReuseCrossVersionIntegrationTest extends CrossVersionIntegrationSpec {
     @Rule public final HttpServer server = new HttpServer()
+    final MavenHttpRepository httpRepo = new MavenHttpRepository(server, new MavenFileRepository(file("maven-repo")))
 
     def "uses cached artifacts from previous Gradle version when no sha1 header"() {
         given:
-        def projectB = mavenRepo.module('org.name', 'projectB').publish()
+        def projectB = httpRepo.module('org.name', 'projectB', '1.0').publish()
         server.sendSha1Header = false
         server.start()
         buildFile << """
 repositories {
-    maven { url 'http://localhost:${server.port}' }
+    maven { url '${httpRepo.uri}' }
 }
 configurations { compile }
 dependencies {
@@ -47,7 +50,7 @@ task retrieve(type: Sync) {
         def userHome = file('user-home')
 
         when:
-        server.allowGetOrHead('/org', mavenRepo.rootDir.file('org'))
+        projectB.allowAll()
 
         and:
         version previous withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
@@ -58,10 +61,10 @@ task retrieve(type: Sync) {
 
         when:
         server.resetExpectations()
-        projectB.allowPomHead(server)
-        projectB.allowPomSha1GetOrHead(server)
-        projectB.allowArtifactHead(server)
-        projectB.allowArtifactSha1GetOrHead(server)
+        projectB.expectPomHead()
+        projectB.expectPomSha1Get()
+        projectB.expectArtifactHead()
+        projectB.expectArtifactSha1Get()
 
         and:
         version current withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
@@ -73,12 +76,12 @@ task retrieve(type: Sync) {
 
     def "uses cached artifacts from previous Gradle version with sha1 header"() {
         given:
-        def projectB = mavenRepo.module('org.name', 'projectB').publish()
+        def projectB = httpRepo.module('org.name', 'projectB', '1.0').publish()
         server.sendSha1Header = true
         server.start()
         buildFile << """
 repositories {
-    maven { url 'http://localhost:${server.port}' }
+    maven { url '${httpRepo.uri}' }
 }
 configurations { compile }
 dependencies {
@@ -94,7 +97,7 @@ task retrieve(type: Sync) {
         def userHome = file('user-home')
 
         when:
-        server.allowGetOrHead('/org', mavenRepo.rootDir.file('org'))
+        projectB.allowAll()
 
         and:
         version previous withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
@@ -105,8 +108,8 @@ task retrieve(type: Sync) {
 
         when:
         server.resetExpectations()
-        projectB.allowPomHead(server)
-        projectB.allowArtifactHead(server)
+        projectB.expectPomHead()
+        projectB.expectArtifactHead()
 
         and:
         version current withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
@@ -114,5 +117,54 @@ task retrieve(type: Sync) {
         then:
         file('libs').assertHasDescendants('projectB-1.0.jar')
         file('libs/projectB-1.0.jar').assertContentsHaveNotChangedSince(snapshot)
+    }
+
+    def "uses cached artifacts from previous Gradle version that match dynamic version"() {
+        given:
+        def projectB = httpRepo.module('org.name', 'projectB', '1.1').publish()
+        server.start()
+
+        buildFile << """
+repositories {
+    maven { url '${httpRepo.uri}' }
+}
+configurations { compile }
+dependencies {
+    compile 'org.name:projectB:[1.0,2.0]'
+}
+
+task retrieve(type: Sync) {
+    into 'libs'
+    from configurations.compile
+}
+"""
+        and:
+        def userHome = file('user-home')
+
+        when:
+        httpRepo.expectMetaDataGet("org.name", "projectB")
+        projectB.allowAll()
+
+        and:
+        version previous withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
+
+        then:
+        file('libs').assertHasDescendants('projectB-1.1.jar')
+        def snapshot = file('libs/projectB-1.1.jar').snapshot()
+
+        when:
+        server.resetExpectations()
+        httpRepo.expectMetaDataGet("org.name", "projectB")
+        projectB.expectPomHead()
+        projectB.expectPomSha1Get()
+        projectB.expectArtifactHead()
+        projectB.expectArtifactSha1Get()
+
+        and:
+        version current withUserHomeDir userHome withTasks 'retrieve' withArguments '-i' run()
+
+        then:
+        file('libs').assertHasDescendants('projectB-1.1.jar')
+        file('libs/projectB-1.1.jar').assertContentsHaveNotChangedSince(snapshot)
     }
 }

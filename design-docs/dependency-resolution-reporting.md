@@ -113,10 +113,8 @@ For interesting version modules, the report shows also if the the version was 'f
 
 ### Implementation approach
 
-- 'dependency-reporting' plugin
-    - 'dependencyInsight' task, pre-configured with:
-        - searches for dependency in 'compile' configuration if java applied, otherwise it needs to be configured
-        - requires the dependency name configured (by default does not list all)
+- 'dependencyInsight' implicit task, pre-configured with:
+    - searches for dependency in 'compile' configuration if java applied, otherwise it needs to be configured
 
 - 'dependencyInsight' task configuration:
     - can provide ResolvedDependencyResult predicate
@@ -132,43 +130,7 @@ For interesting version modules, the report shows also if the the version was 'f
 - should the new report extend AbstractReportTask? In that case we need decide what to do with 'projects' public property on AbstractReportTask.
 - if there is a single configuration in the project, should it be used by default by the task?
 - behavior when some dependencies are unresolved
-
-## Allow new report to be used from command-line
-
-There should be some simple way to run the report from the command line.
-While doing that consider adding support for selecting configuration for the regular 'dependencies' report from command line.
-
-### User visible changes
-
-1. When the dependencyInsight task is issued from the command line, it is possible to configure extra command line parameters.
-It's not 100% decided what will be the naming of the parameters, currently it would be:
- dependencyInsight --include org.foo:bar --configuration runtime
- When we decide on exact naming of the task and the parameters, this spec needs to be updated.
-1. Each parameter must be applicable to at least one task specified at command line. If any of the parameters cannot be applied to any of the tasks
- then the command should fail fast. Examples:
-    'dependencyInsight --include x --configuration y' - works fine
-    'clean build dependencyInsight --include x --configuration y' - works fine, applies the configuration only to dependencyInsight task
-    'clean build --include x --configuration' - breaks as the dependencyInsight is not included so the parameters should not be used
-1. If multiple tasks match given parameters (for example, when name-matching execution schedules multiple dependency insight tasks)
- then *all* of the tasks should be configured with given parameters.
-1. The command line parameter takes precedence over the build script configuration
-
-### Test coverage
-
-1. uses command line parameter to configure task
-1. shows decent message if required parameter is missing
-1. shows decent message if required parameter value is missing
-1. shows decent message if parameter is passed but no task that accepts this parameter is scheduled
-1. shows decent message if typo in parameter name (or if single '-' used instead of '--')
-1. the command line parameter takes precedence over the build script configuration
-1. configures multiple tasks if parameters match multiple tasks
-1. deals with the scenario when value of the parameter matches some existing task name
-1. multiple different tasks configured at single command line
-1. deals when there are other tasks scheduled
-
-### Implementation approach
-
-TaskNameResolvingBuildConfigurationAction needs to accommodate given requirements.
+- needs to work with the c++ plugins in the same way it works with the java plugin
 
 ## Dependency report handles resolution failures
 
@@ -184,7 +146,24 @@ TBD
 
 TBD
 
-## Inverted dependency report handles resolution failures
+## Dependency insight report handles resolution failures
+
+### User visible changes
+
+TBD
+
+### Test coverage
+
+TBD
+
+### Implementation approach
+
+TBD
+
+## Dependency reports include file dependencies
+
+Currently the dependencies report does not include: file dependencies, gradleApi(), localGroovy() dependencies
+In addition to above, the dependency insight report does not include the project dependencies (not sure if they are needed in this report)
 
 ### User visible changes
 
@@ -201,5 +180,4 @@ TBD
 # Open issues / ideas
 
 1. Model the unresolved dependencies - how to carry the resolution failure?
-2. Later, we'd add some conveniences to ResolvedConfiguration to do some traversal of this graph in interesting ways - find me all the module versions, find me all the artefacts, find me all the files, find me all the unresolved dependencies, and so on.
-3. I would also think about wrapping access to the graph in some kind of action
+2. I would also think about wrapping access to the graph in some kind of action

@@ -72,7 +72,7 @@ public class ProgressLoggingExternalResourceAccessor extends AbstractProgressLog
         }
 
         public void writeTo(OutputStream outputStream) throws IOException {
-            final ResourceOperation downloadOperation = createResourceOperation(resource.getName(), ResourceOperation.DOWNLOAD, getClass(), resource.getContentLength());
+            final ResourceOperation downloadOperation = createResourceOperation(resource.getName(), ResourceOperation.Type.download, getClass(), resource.getContentLength());
             final ProgressLoggingOutputStream progressLoggingOutputStream = new ProgressLoggingOutputStream(outputStream, downloadOperation);
             try {
                 resource.writeTo(progressLoggingOutputStream);
@@ -116,6 +116,10 @@ public class ProgressLoggingExternalResourceAccessor extends AbstractProgressLog
 
         public InputStream openStream() throws IOException {
             return resource.openStream();
+        }
+
+        public String toString(){
+            return resource.toString();
         }
     }
 

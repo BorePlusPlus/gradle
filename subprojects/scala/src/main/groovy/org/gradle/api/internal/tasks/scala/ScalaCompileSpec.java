@@ -33,5 +33,7 @@ public interface ScalaCompileSpec extends JvmLanguageCompileSpec {
 
     void setZincClasspath(Iterable<File> classpath);
 
-    public Map<File, File> getCompilerCacheMap();
+    Map<File, File> getAnalysisMap();
+
+    void setAnalysisMap(Map<File, File> analysisMap);
 }

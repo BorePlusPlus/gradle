@@ -18,13 +18,13 @@ and some types appear to leak through. Recent versions of the [scala-maven-plugi
 
 # Implementation plan
 
-## Make ScalaCompile task support sbt's incremental compiler
+## Make ScalaCompile task support Zinc's incremental compiler
 
-Figure out whether to integrate directly with sbt or go via Zinc. In both cases, we will integrate via a compiler API, and no external process will be involved.
+Integrate via Zinc's compiler API.
 
 ### User visible changes
 
-New switch to enable the incremental compiler: ScalaCompileOptions.useIncrementalCompiler = true|false.
+New option to switch between Ant and Zinc compiler, similar to what we have for Java and Groovy: ScalaCompileOptions.useAnt = true|false.
 
 ### Sad day cases
 
@@ -97,7 +97,3 @@ or does it also apply to sbt's incremental compiler?
 
 The incremental compiler stores some metadata on disk. When incremental compilation is flipped on and off on successive compilations, can this lead to
 incorrect compilation results, or does it, in the worst case, lead to more files being recompiled than necessary?
-
-Judging from my experiments, sbt/Zinc not only require the scala-library Jar (7MB) on their own class path, but also the scala-compiler Jar (15MB).
-This is although they can be configured with the Scala compiler (Jar) to be used for compilation. Since we can't ship such big Jars with the Gradle
-distribution, questions arise around how to load sbt/Zinc dynamically, which versions to use at runtime (vs. compile time), etc.

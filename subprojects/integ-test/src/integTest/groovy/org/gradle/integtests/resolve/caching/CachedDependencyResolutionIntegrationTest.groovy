@@ -16,17 +16,16 @@
 
 package org.gradle.integtests.resolve.caching
 
-import org.gradle.integtests.fixtures.IvyModule
+import org.gradle.integtests.fixtures.HttpServer
+import org.gradle.integtests.fixtures.IvyHttpModule
 import org.gradle.integtests.resolve.AbstractDependencyResolutionTest
 import org.gradle.util.TestFile
-import org.gradle.integtests.fixtures.HttpServer
-
 /**
  * We are using Ivy here, but the strategy is the same for any kind of repository.
  */
 class CachedDependencyResolutionIntegrationTest extends AbstractDependencyResolutionTest {
 
-    IvyModule module
+    IvyHttpModule module
 
     TestFile downloaded
     TestFile.Snapshot lastState
@@ -35,7 +34,7 @@ class CachedDependencyResolutionIntegrationTest extends AbstractDependencyResolu
         server.start()
         buildFile << """
 repositories {
-    ivy { url "http://localhost:${server.port}/" }
+    ivy { url "${ivyHttpRepo.uri}" }
 }
 
 configurations { compile }
@@ -48,21 +47,20 @@ dependencies {
     compile group: "group", name: "projectA", version: "1.1", changing: true
 }
 
-task retrieve(type: Copy) {
+task retrieve(type: Sync) {
     into 'build'
     from configurations.compile
 }
 """
 
-        module = ivyRepo().module("group", "projectA", "1.1")
-        module.publish()
+        module = ivyHttpRepo.module("group", "projectA", "1.1").publish()
 
         downloaded = file('build/projectA-1.1.jar')
     }
 
     void initialResolve() {
-        module.expectIvyGet(server)
-        module.expectArtifactGet(server)
+        module.expectIvyGet()
+        module.expectJarGet()
 
         resolve()
     }
@@ -76,47 +74,47 @@ task retrieve(type: Copy) {
     }
 
     void headOnlyRequests() {
-        module.expectIvyHead(server)
-        module.expectArtifactHead(server)
+        module.expectIvyHead()
+        module.expectJarHead()
     }
 
     void headSha1ThenGetRequests() {
-        module.expectIvyHead(server)
-        module.expectIvySha1Get(server)
-        module.expectIvyGet(server)
+        module.expectIvyHead()
+        module.expectIvySha1Get()
+        module.expectIvyGet()
 
-        module.expectArtifactHead(server)
-        module.expectArtifactSha1Get(server)
-        module.expectArtifactGet(server)
+        module.expectJarHead()
+        module.expectJarSha1Get()
+        module.expectJarGet()
     }
 
     void sha1OnlyRequests() {
-        module.expectIvySha1Get(server)
-        module.expectArtifactSha1Get(server)
+        module.expectIvySha1Get()
+        module.expectJarSha1Get()
     }
 
     void sha1ThenGetRequests() {
-        module.expectIvySha1Get(server)
-        module.expectIvyGet(server)
+        module.expectIvySha1Get()
+        module.expectIvyGet()
 
-        module.expectArtifactSha1Get(server)
-        module.expectArtifactGet(server)
+        module.expectJarSha1Get()
+        module.expectJarGet()
     }
 
     void headThenSha1Requests() {
-        module.expectIvyHead(server)
-        module.expectIvySha1Get(server)
+        module.expectIvyHead()
+        module.expectIvySha1Get()
 
-        module.expectArtifactHead(server)
-        module.expectArtifactSha1Get(server)
+        module.expectJarHead()
+        module.expectJarSha1Get()
     }
 
     void headThenGetRequests() {
-        module.expectIvyHead(server)
-        module.expectIvyGet(server)
+        module.expectIvyHead()
+        module.expectIvyGet()
 
-        module.expectArtifactHead(server)
-        module.expectArtifactGet(server)
+        module.expectJarHead()
+        module.expectJarGet()
     }
 
     void unchangedResolve() {
@@ -219,6 +217,4 @@ task retrieve(type: Copy) {
         headThenGetRequests()
         changedResolve()
     }
-
-
 }

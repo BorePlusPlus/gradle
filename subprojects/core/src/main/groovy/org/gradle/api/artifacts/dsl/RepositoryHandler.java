@@ -30,7 +30,7 @@ import java.util.Map;
  *
  * @author Hans Dockter
  */
-public interface RepositoryHandler extends ArtifactRepositoryContainer {
+public interface RepositoryHandler extends ArtifactRepositoryContainer, RepositoryFactory {
 
     /**
      * Adds a resolver that looks into a number of directories for artifacts. The artifacts are expected to be located in the

@@ -22,10 +22,14 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.artifacts.repositories.PasswordCredentials;
 import org.gradle.api.internal.artifacts.repositories.layout.*;
+import org.gradle.api.internal.artifacts.repositories.resolver.IvyResolver;
+import org.gradle.api.internal.artifacts.repositories.resolver.PatternBasedResolver;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory;
 import org.gradle.api.internal.externalresource.cached.CachedExternalResourceIndex;
 import org.gradle.api.internal.externalresource.local.LocallyAvailableResourceFinder;
 import org.gradle.api.internal.file.FileResolver;
+import org.gradle.api.publish.internal.NormalizedPublication;
+import org.gradle.api.publish.internal.Publisher;
 import org.gradle.util.ConfigureUtil;
 import org.gradle.util.WrapUtil;
 
@@ -160,5 +164,10 @@ public class DefaultIvyArtifactRepository extends AbstractAuthenticationSupporte
             }
         }
     }
+
+    public <P extends NormalizedPublication> Publisher<P> createPublisher(P publication) {
+        return null;
+    }
+
 
 }

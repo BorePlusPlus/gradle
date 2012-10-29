@@ -26,9 +26,7 @@ import org.gradle.api.internal.artifacts.configurations.ConfigurationContainerIn
 import org.gradle.api.internal.artifacts.configurations.DefaultConfigurationContainer;
 import org.gradle.api.internal.artifacts.configurations.DependencyMetaDataProvider;
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
-import org.gradle.api.internal.artifacts.dsl.DefaultArtifactHandler;
-import org.gradle.api.internal.artifacts.dsl.DefaultPublishArtifactFactory;
-import org.gradle.api.internal.artifacts.dsl.DefaultRepositoryHandler;
+import org.gradle.api.internal.artifacts.dsl.*;
 import org.gradle.api.internal.artifacts.dsl.dependencies.DefaultDependencyHandler;
 import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyFactory;
 import org.gradle.api.internal.artifacts.dsl.dependencies.ProjectFinder;
@@ -43,9 +41,8 @@ import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.*;
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.dependencies.*;
 import org.gradle.api.internal.artifacts.ivyservice.projectmodule.DefaultProjectModuleRegistry;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.DefaultDependencyResolver;
-import org.gradle.api.internal.artifacts.ivyservice.resolveengine.EmptyResolutionResultConfigurer;
 import org.gradle.api.internal.artifacts.mvnsettings.*;
-import org.gradle.api.internal.artifacts.repositories.DefaultResolverFactory;
+import org.gradle.api.internal.artifacts.repositories.DefaultBaseRepositoryFactory;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory;
 import org.gradle.api.internal.externalresource.cached.ByUrlCachedExternalResourceIndex;
 import org.gradle.api.internal.externalresource.ivy.ArtifactAtRepositoryCachedExternalResourceIndex;
@@ -251,11 +248,12 @@ public class DefaultDependencyManagementServices extends DefaultServiceRegistry 
         private final DependencyMetaDataProvider dependencyMetaDataProvider;
         private final ProjectFinder projectFinder;
         private final DomainObjectContext domainObjectContext;
+        private RepositoryFactoryInternal repositoryFactory;
         private DefaultRepositoryHandler repositoryHandler;
         private ConfigurationContainerInternal configurationContainer;
         private DependencyHandler dependencyHandler;
         private DefaultArtifactHandler artifactHandler;
-        private ResolverFactory resolverFactory;
+        private BaseRepositoryFactory baseRepositoryFactory;
 
         private DefaultDependencyResolutionServices(ServiceRegistry parent, FileResolver fileResolver, DependencyMetaDataProvider dependencyMetaDataProvider, ProjectFinder projectFinder, DomainObjectContext domainObjectContext) {
             this.parent = parent;
@@ -272,11 +270,18 @@ public class DefaultDependencyManagementServices extends DefaultServiceRegistry 
             return repositoryHandler;
         }
 
-        public ResolverFactory getResolverFactory() {
-            if (resolverFactory == null) {
+        public RepositoryFactoryInternal getRepositoryFactory() {
+            if (repositoryFactory == null) {
+                repositoryFactory = new DefaultRepositoryFactory(getBaseRepositoryFactory());
+            }
+            return repositoryFactory;
+        }
+
+        public BaseRepositoryFactory getBaseRepositoryFactory() {
+            if (baseRepositoryFactory == null) {
                 Instantiator instantiator = parent.get(Instantiator.class);
                 //noinspection unchecked
-                resolverFactory = new DefaultResolverFactory(
+                baseRepositoryFactory = new DefaultBaseRepositoryFactory(
                         get(LocalMavenRepositoryLocator.class),
                         fileResolver,
                         instantiator,
@@ -286,12 +291,12 @@ public class DefaultDependencyManagementServices extends DefaultServiceRegistry 
                 );
             }
 
-            return resolverFactory;
+            return baseRepositoryFactory;
         }
 
         private DefaultRepositoryHandler createRepositoryHandler() {
             Instantiator instantiator = parent.get(Instantiator.class);
-            return instantiator.newInstance(DefaultRepositoryHandler.class, getResolverFactory(), instantiator);
+            return instantiator.newInstance(DefaultRepositoryHandler.class, getRepositoryFactory(), instantiator);
         }
 
         public ConfigurationContainerInternal getConfigurationContainer() {
@@ -356,13 +361,12 @@ public class DefaultDependencyManagementServices extends DefaultServiceRegistry 
                     new DefaultProjectModuleRegistry(
                             get(PublishModuleDescriptorConverter.class))
             );
-            return new EmptyResolutionResultConfigurer(
-                    new ErrorHandlingArtifactDependencyResolver(
+            return new ErrorHandlingArtifactDependencyResolver(
                             new ShortcircuitEmptyConfigsArtifactDependencyResolver(
                                     new SelfResolvingDependencyResolver(
                                             new CacheLockingArtifactDependencyResolver(
                                                     get(CacheLockingManager.class),
-                                                    resolver)))));
+                                                    resolver))));
         }
 
         ArtifactPublisher createArtifactPublisher(DefaultRepositoryHandler resolverProvider) {

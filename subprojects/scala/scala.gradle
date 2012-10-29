@@ -22,7 +22,7 @@ dependencies {
     compile project(":core")
     compile project(":plugins")
 
-    provided("com.typesafe.zinc:zinc:0.1.1") {
+    provided("com.typesafe.zinc:zinc:0.2.0-M2") {
         exclude module: "ensime-sbt-cmd"
     }
 
@@ -32,6 +32,11 @@ dependencies {
 useTestFixtures(project: ":plugins") // includes core test fixtures
 
 if (!javaVersion.java6Compatible) {
-    sourceSets.main.groovy.exclude 'org/gradle/api/internal/tasks/scala/ApiScalaCompiler.*'
-    sourceSets.main.groovy.exclude 'org/gradle/api/internal/tasks/scala/SbtLoggerAdapter.*'
+    sourceSets.all {
+        groovy.exclude '**/jdk6/**'
+    }
+}
+
+configure([integTest, daemonIntegTest]) {
+    jvmArgs "-XX:MaxPermSize=1g" // AntScalaCompilerIntegrationTest needs lots of permgen
 }

@@ -1,10 +1,11 @@
 import groovy.text.SimpleTemplateEngine
 import groovy.text.Template
 import org.gradle.api.tasks.TaskAction
+
 import java.text.SimpleDateFormat
+import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import java.util.jar.Manifest
-import java.util.jar.JarEntry
 
 class TestProject {
     final String name
@@ -37,8 +38,8 @@ class ProjectGeneratorTask extends DefaultTask {
     @OutputDirectory
     File destDir
     boolean groovyProject
-    boolean testReport = false
-    String testFramework = 'useJUnit()'
+    boolean scalaProject
+    boolean withPlainAntCompile
     int sourceFiles = 1
     Integer testSourceFiles
     int linesOfCodePerSourceFile = 5
@@ -150,10 +151,8 @@ class ProjectGeneratorTask extends DefaultTask {
             }
         }
 
-        args += [projectName: testProject.name, groovyProject: groovyProject, propertyCount: (testProject.linesOfCodePerSourceFile.intdiv(7)),
-                repository: testProject.repository, dependencies:testProject.dependencies,
-                testProject: testProject
-                ]
+        args += [projectName: testProject.name, groovyProject: groovyProject, scalaProject: scalaProject, withPlainAntCompile: withPlainAntCompile,
+                propertyCount: (testProject.linesOfCodePerSourceFile.intdiv(7)), repository: testProject.repository, dependencies:testProject.dependencies]
 
         files.each {String name ->
             generate(name, name, args)
@@ -180,6 +179,18 @@ class ProjectGeneratorTask extends DefaultTask {
                     String packageName = "org.gradle.test.performance${(int) (it / 100) + 1}"
                     Map classArgs = args + [packageName: packageName, productionClassName: "ProductionGroovy${it + 1}", testClassName: "TestGroovy${it + 1}"]
                     generate("src/test/groovy/${packageName.replace('.', '/')}/${classArgs.testClassName}.groovy", 'Test.groovy', classArgs)
+                }
+            }
+            if (scalaProject) {
+                testProject.sourceFiles.times {
+                    String packageName = "org.gradle.test.performance${(int) (it / 100) + 1}"
+                    Map classArgs = args + [packageName: packageName, productionClassName: "ProductionScala${it + 1}"]
+                    generate("src/main/scala/${packageName.replace('.', '/')}/${classArgs.productionClassName}.scala", 'Production.scala', classArgs)
+                }
+                testProject.testSourceFiles.times {
+                    String packageName = "org.gradle.test.performance${(int) (it / 100) + 1}"
+                    Map classArgs = args + [packageName: packageName, productionClassName: "ProductionScala${it + 1}", testClassName: "TestScala${it + 1}"]
+                    generate("src/test/scala/${packageName.replace('.', '/')}/${classArgs.testClassName}.scala", 'Test.scala', classArgs)
                 }
             }
         }

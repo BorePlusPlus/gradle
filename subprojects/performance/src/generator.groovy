@@ -45,6 +45,8 @@ class ProjectGeneratorTask extends DefaultTask {
     int linesOfCodePerSourceFile = 5
     @InputFiles FileCollection testDependencies
     String testClassTemplate = 'Test.java'
+    boolean testReport = false
+    String testFramework = 'useJUnit()'
 
     final List<TestProject> projects = []
     final SimpleTemplateEngine engine = new SimpleTemplateEngine()
@@ -152,7 +154,9 @@ class ProjectGeneratorTask extends DefaultTask {
         }
 
         args += [projectName: testProject.name, groovyProject: groovyProject, scalaProject: scalaProject, withPlainAntCompile: withPlainAntCompile,
-                propertyCount: (testProject.linesOfCodePerSourceFile.intdiv(7)), repository: testProject.repository, dependencies:testProject.dependencies]
+                propertyCount: (testProject.linesOfCodePerSourceFile.intdiv(7)), repository: testProject.repository, dependencies:testProject.dependencies,
+                testProject: testProject
+        ]
 
         files.each {String name ->
             generate(name, name, args)

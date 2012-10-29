@@ -63,6 +63,14 @@ task lotDependencies(type: ProjectGeneratorTask, description: 'Generates a small
     }
 }
 
+task withTestNG(type: ProjectGeneratorTask) {
+    projects = 2
+    sourceFiles = 10
+    testReport = true
+    testFramework = 'useTestNG()'
+    testClassTemplate = 'TestNGTest.java'
+}
+
 def generators = tasks.withType(ProjectGeneratorTask)
 generators.all {
     group = 'Project setup'
